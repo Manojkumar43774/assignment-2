@@ -31,7 +31,7 @@ if static_path.exists():
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to NeuroAI 🧠", "app": "Intelligent Text Generation", "demo_url": "/static/index.html", "docs_url": "/docs"}
+    return {"message": "Welcome to NeuroAI 🧠", "app": "Intelligent Text Generation", "demo_url": "/static/demo.html", "docs_url": "/docs"}
 
 
 @app.get("/health")
