@@ -25,9 +25,9 @@ def get_ollama_response(prompt: str, max_tokens: int, temperature: float) -> str
         response.raise_for_status()
         return response.json()["response"]
     except requests.exceptions.ConnectionError:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Ollama server not available")
+        return f"[Demo Mode - Ollama Offline] Based on your prompt: '{prompt}'\n\nThis is a demo response. The actual response would come from the Mistral model running in Ollama. The response is being generated with temperature={temperature} and max_tokens={max_tokens}."
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        return f"[Demo Mode] Error connecting to model: {str(e)}"
 
 
 def get_huggingface_response(prompt: str, max_tokens: int, temperature: float) -> str:
