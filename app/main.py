@@ -6,8 +6,8 @@ from app.routers import auth, model
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="AI Microservice",
-    description="FastAPI microservice with open models and JWT authentication",
+    title="NeuroAI 🧠",
+    description="Intelligent text generation powered by open models with JWT authentication",
     version="1.0.0"
 )
 
@@ -25,7 +25,7 @@ app.include_router(model.router)
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to AI Microservice", "docs_url": "/docs"}
+    return {"message": "Welcome to NeuroAI 🧠", "app": "Intelligent Text Generation", "docs_url": "/docs"}
 
 
 @app.get("/health")

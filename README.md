@@ -1,6 +1,8 @@
-# Microservice with Open Models & Local Execution
+# NeuroAI 🧠
 
 A containerized FastAPI microservice running open models locally or via free-tier APIs, protected by JWT authentication and Pydantic v2 schema validation.
+
+**NeuroAI** - Intelligent text generation at your fingertips. Powered by open models, secured with JWT.
 
 ## Features
 
@@ -72,7 +74,7 @@ docker-compose up --build
 ## Project Structure
 
 ```
-assignment-2/
+neuroai/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI app initialization
