@@ -439,6 +439,24 @@
                         <div class="grid-item">
                             <h3>Generate Text</h3>
                             <div class="form-group">
+                                <label>Provider:</label>
+                                <select id="provider" onchange="loadModels()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                                    <option value="ollama">🦙 Ollama (Local Models)</option>
+                                    <option value="huggingface">🤗 Hugging Face (Free API)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Model:</label>
+                                <select id="model" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                                    <option value="mistral">Mistral 7B - Fast & Efficient</option>
+                                    <option value="llama2">Llama 2 7B - Meta's Model</option>
+                                    <option value="neural-chat">Neural Chat - Conversation</option>
+                                    <option value="dolphin">Dolphin - Uncensored</option>
+                                    <option value="orca-mini">Orca Mini - Lightweight</option>
+                                </select>
+                            </div>
+                            <div id="modelInfo" style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9em; display: none; border-left: 4px solid #2196F3;"></div>
+                            <div class="form-group">
                                 <label>Prompt:</label>
                                 <textarea id="prompt" placeholder="What is machine learning?" rows="4">What is machine learning?</textarea>
                             </div>
@@ -912,6 +930,54 @@ curl -X GET http://localhost:8000/model/status \
             }
         }
 
+        function loadModels() {
+            const provider = document.getElementById('provider').value;
+            const modelSelect = document.getElementById('model');
+            const modelInfo = document.getElementById('modelInfo');
+
+            modelSelect.innerHTML = '';
+
+            const models = {
+                ollama: [
+                    { id: 'mistral', name: 'Mistral 7B - Fast & Efficient', desc: '4GB, Fastest inference' },
+                    { id: 'llama2', name: 'Llama 2 7B - Meta Model', desc: '4GB, High quality output' },
+                    { id: 'neural-chat', name: 'Neural Chat - Conversation', desc: '4GB, Best for chat' },
+                    { id: 'dolphin', name: 'Dolphin - Uncensored', desc: '4GB, No restrictions' },
+                    { id: 'orca-mini', name: 'Orca Mini - Lightweight', desc: '2GB, Fastest' }
+                ],
+                huggingface: [
+                    { id: 'gpt2', name: 'GPT-2 - OpenAI Model', desc: 'Free API, 124M params' },
+                    { id: 'distilgpt2', name: 'DistilGPT-2 - Smaller', desc: 'Free API, 82M params, faster' },
+                    { id: 't5-small', name: 'T5 Small - Text-to-Text', desc: 'Free API, Google model' },
+                    { id: 'pegasus-cnn', name: 'PEGASUS - Summarization', desc: 'Free API, Text summarization' },
+                    { id: 'bloom-560m', name: 'BLOOM 560M - BigScience', desc: 'Free API, Multilingual' }
+                ]
+            };
+
+            const selectedModels = models[provider] || [];
+            selectedModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.name;
+                option.dataset.desc = model.desc;
+                modelSelect.appendChild(option);
+            });
+
+            updateModelInfo();
+        }
+
+        function updateModelInfo() {
+            const modelSelect = document.getElementById('model');
+            const selected = modelSelect.options[modelSelect.selectedIndex];
+            const desc = selected.dataset.desc || '';
+            const modelInfo = document.getElementById('modelInfo');
+
+            if (desc) {
+                modelInfo.textContent = '📊 ' + desc;
+                modelInfo.style.display = 'block';
+            }
+        }
+
         async function generateText() {
             if (!accessToken) {
                 showResponse('generateResponse', 'Error: Please login first', true);
@@ -921,6 +987,8 @@ curl -X GET http://localhost:8000/model/status \
             const prompt = document.getElementById('prompt').value;
             const maxTokens = parseInt(document.getElementById('maxTokens').value);
             const temperature = parseFloat(document.getElementById('temperature').value);
+            const provider = document.getElementById('provider').value;
+            const model = document.getElementById('model').value;
 
             if (!prompt) {
                 showResponse('generateResponse', 'Please enter a prompt', true);
@@ -934,7 +1002,13 @@ curl -X GET http://localhost:8000/model/status \
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${accessToken}`
                     },
-                    body: JSON.stringify({ prompt, max_tokens: maxTokens, temperature })
+                    body: JSON.stringify({
+                        prompt,
+                        max_tokens: maxTokens,
+                        temperature,
+                        provider,
+                        model
+                    })
                 });
 
                 const data = await response.json();
@@ -986,6 +1060,7 @@ curl -X GET http://localhost:8000/model/status \
             element.className = 'response-box ' + (isError ? 'error' : 'success');
         }
 
+        loadModels();
         updateAuthUI();
     </script>
 </body>
