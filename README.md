@@ -8,8 +8,11 @@ A containerized FastAPI microservice running open models locally or via free-tie
 
 - **FastAPI** - Modern async web framework
 - **JWT Authentication** - Secure API endpoints
+- **Role-Based Access Control (RBAC)** - `user` and `admin` roles, enforced server-side via a `require_admin` dependency
 - **Pydantic v2** - Data validation and serialization
 - **Open Model Integration** - Using Ollama (local) or Hugging Face API (free-tier)
+- **Vision Support** - Attach a photo and ask questions about it via Ollama's LLaVA model
+- **ChatGPT-style Chat UI** - Bubble conversation, voice input (Web Speech API), photo attach, and a login/register prompt reachable from any tab
 - **Docker** - Containerized deployment
 - **Modular Architecture** - Clean separation of concerns
 
@@ -62,8 +65,23 @@ docker-compose up --build
 - `POST /auth/login` - Get JWT token
 
 ### AI Model
-- `POST /model/generate` - Generate text using AI model
+- `POST /model/generate` - Generate text using an AI model. Accepts an optional
+  `image_base64` field to ask a vision-capable model (`llava`) a question about
+  an attached photo; requires `provider: "ollama"` and `model: "llava"` when an
+  image is present, otherwise returns `400`.
+- `GET /model/list` - List all available models
 - `GET /model/status` - Check model status
+
+### Admin (RBAC - requires an `admin` role JWT)
+- `GET /admin/users` - List all registered users and their roles
+- `POST /admin/users/{username}/promote` - Promote a user to `admin`
+- `DELETE /admin/users/{username}` - Delete a user (an admin cannot delete their own account)
+
+The very first admin has to be bootstrapped from the terminal, since there's
+no admin yet to promote anyone:
+```bash
+python scripts/create_admin.py <username>
+```
 
 ## Documentation
 
@@ -79,13 +97,19 @@ neuroai/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI app initialization
 │   ├── config.py            # Configuration and environment variables
-│   ├── auth.py              # JWT authentication logic
+│   ├── auth.py              # JWT auth logic + require_admin RBAC dependency
 │   ├── database.py          # Database setup (SQLite)
-│   ├── models.py            # Database models
+│   ├── models.py            # Database models (User, with a role field)
+│   ├── models_config.py     # Available model metadata (incl. llava vision)
 │   ├── schemas.py           # Pydantic schemas
 │   └── routers/
 │       ├── auth.py          # Auth endpoints
-│       └── model.py         # Model inference endpoints
+│       ├── admin.py         # RBAC admin endpoints (list/promote/delete users)
+│       └── model.py         # Model inference endpoints (text + vision)
+├── scripts/
+│   └── create_admin.py      # Bootstraps the first admin account
+├── static/
+│   └── demo.html            # Interactive chat-style demo UI
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt

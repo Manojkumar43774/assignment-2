@@ -3,14 +3,18 @@
 ## 🎬 How to Demonstrate the Project
 
 ### Step 1: Open the Interactive Demo UI
-Go to: **http://localhost:8000/static/index.html**
+Go to: **http://localhost:8000/static/demo.html**
 
 This interactive dashboard lets you:
-- Register a new user
-- Login to get JWT token
-- Test all API endpoints
-- See live JSON responses
+- Register a new user / login to get a JWT token
+- Chat with an AI model in a ChatGPT-style interface (text, voice, or photo)
+- Ask a vision model (LLaVA) questions about an attached photo
+- Manage users with role-based access control (Admin tab)
+- Test all API endpoints and see live JSON responses
 - Demonstrate Pydantic v2 validation
+
+If you try to chat, attach a photo, use the mic, or use any Admin action
+while logged out, a login/register popup appears automatically.
 
 ---
 
@@ -39,9 +43,11 @@ This interactive dashboard lets you:
 
 **Explanation:**
 - User creates account with email validation (Pydantic v2)
-- Password is hashed with Bcrypt (never stored plain text)
+- Password is hashed with Argon2 (never stored plain text)
 - JWT token is generated immediately after registration
 - Token expires based on `ACCESS_TOKEN_EXPIRE_MINUTES`
+- Every account starts with the `user` role; admins are bootstrapped
+  separately (see Flow Step 6 below)
 
 ---
 
@@ -102,7 +108,9 @@ Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 {
   "prompt": "What is machine learning?",
   "max_tokens": 100,
-  "temperature": 0.7
+  "temperature": 0.7,
+  "provider": "ollama",
+  "model": "mistral"
 }
 ```
 
@@ -111,6 +119,7 @@ Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 {
   "generated_text": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed. It focuses on developing algorithms and models that can...",
   "model": "mistral",
+  "provider": "ollama",
   "tokens_generated": 45
 }
 ```
@@ -119,12 +128,16 @@ Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 ```python
 class GenerateRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=1000)
-    max_tokens: int = Field(default=100, ge=1, le=2000)
+    max_tokens: int = Field(default=300, ge=1, le=2000)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    model: str = Field(default="mistral")
+    provider: str = Field(default="ollama")
+    image_base64: Optional[str] = Field(default=None)
 
 class GenerateResponse(BaseModel):
     generated_text: str
     model: str
+    provider: str
     tokens_generated: int
 ```
 
@@ -132,8 +145,31 @@ class GenerateResponse(BaseModel):
 - `prompt`: Validated to be 1-1000 characters
 - `max_tokens`: Must be between 1-2000
 - `temperature`: Must be between 0.0-2.0
+- `image_base64` (optional): base64-encoded photo for vision-capable models
 - Response is validated against GenerateResponse schema
 - All values are type-checked and coerced to correct types
+
+---
+
+### Flow Step 4b: Vision Support - Ask About a Photo
+
+**Endpoint:** `POST /model/generate`
+
+**Request:**
+```json
+{
+  "prompt": "What is in this image?",
+  "provider": "ollama",
+  "model": "llava",
+  "image_base64": "<base64-encoded photo, no data: prefix>"
+}
+```
+
+**Explanation:**
+- `image_base64` is forwarded to Ollama's `images` field alongside the prompt
+- Only `provider: "ollama"` + `model: "llava"` are allowed with an image -
+  any other combination (e.g. Hugging Face) is rejected with `400 Bad Request`
+- The response is a genuine answer grounded in the image, not a canned string
 
 ---
 
@@ -159,13 +195,39 @@ class GenerateResponse(BaseModel):
 
 ---
 
+### Flow Step 6: Role-Based Access Control (Admin Endpoints)
+
+Every account registers with the `user` role. The first admin has to be
+bootstrapped from the terminal, since there's no admin yet to promote anyone:
+
+```bash
+python scripts/create_admin.py <username>
+```
+
+**Endpoints (all require an `admin`-role Bearer token):**
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/admin/users` | GET | List all registered users and their roles |
+| `/admin/users/{username}/promote` | POST | Promote a user to `admin` |
+| `/admin/users/{username}` | DELETE | Delete a user (cannot delete yourself) |
+
+**Explanation:**
+- The role check (`require_admin`) happens server-side as a FastAPI
+  dependency, not just by hiding buttons in the UI
+- A non-admin JWT hitting any of these returns `403 Forbidden`
+- A missing/invalid JWT returns `401 Unauthorized`, same as any other
+  protected endpoint
+
+---
+
 ## 🔒 JWT Authentication Security Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. User Registration                                        │
 │    - Email validated (Pydantic)                            │
-│    - Password hashed (Bcrypt)                              │
+│    - Password hashed (Argon2)                              │
 │    - Stored in SQLite database                             │
 └────────────────┬────────────────────────────────────────────┘
                  │
@@ -281,7 +343,7 @@ Services:
 - **SQLite**: Embedded in container
 
 ### Access from Container
-- Demo UI: http://localhost:8000/static/index.html
+- Demo UI: http://localhost:8000/static/demo.html
 - API Docs: http://localhost:8000/docs
 - Health: http://localhost:8000/health
 
@@ -316,14 +378,38 @@ Services:
    - Each can login independently
    - Data persists across requests
 
+6. **Vision Support (LLaVA)**
+   - Attach a photo in the chat UI and ask a question about it
+   - Show the model auto-switches to `ollama` + `llava`
+   - Show the real, image-grounded answer (not a canned response)
+   - Show the 400 rejection when attaching an image with a non-vision
+     provider/model (e.g. Hugging Face)
+
+7. **Role-Based Access Control (RBAC)**
+   - Bootstrap an admin from the terminal with `scripts/create_admin.py`
+   - List/promote/delete users from the Admin tab
+   - Show a non-admin account gets 403 Forbidden on the same endpoints
+   - Show the shared login/register popup appears for any Admin action
+     while logged out
+
 ---
 
 ## 📱 Interactive Demo UI Features
 
-The demo UI at `/static/index.html` provides:
+The demo UI at `/static/demo.html` provides:
 
-- ✅ One-click registration
-- ✅ One-click login
+- ✅ ChatGPT-style chat interface for the AI Model tab (bubbles, scrolling
+  history, suggestion chips)
+- ✅ Voice input via the Web Speech API (no extra backend calls)
+- ✅ Photo attach for vision questions - auto-switches to Ollama's LLaVA
+- ✅ A login/register popup that appears automatically anywhere auth is
+  required (chat, mic, photo attach, Admin actions) instead of a silent
+  failure
+- ✅ Ghost placeholder text and show/hide password toggles on every
+  username/password field, which clear themselves after each action
+- ✅ Role-based access control via a dedicated Admin tab (list/promote/
+  delete users)
+- ✅ One-click registration and login
 - ✅ Automatic token storage in localStorage
 - ✅ Bearer token displayed for reference
 - ✅ All API endpoints with real-time testing
