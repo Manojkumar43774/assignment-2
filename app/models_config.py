@@ -38,6 +38,14 @@ AVAILABLE_MODELS = {
             "provider": "Ollama",
             "size": "2GB",
             "url": "https://ollama.ai/library/orca-mini"
+        },
+        "llava": {
+            "name": "LLaVA",
+            "description": "Vision-language model - understands images, not just text",
+            "provider": "Ollama",
+            "size": "4.5GB",
+            "url": "https://ollama.ai/library/llava",
+            "vision": True
         }
     },
     "huggingface": {

@@ -31,13 +31,24 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def verify_token(credentials = Depends(security)) -> str:
+def decode_token(credentials = Depends(security)) -> dict:
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        if payload.get("sub") is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        return username
+        return payload
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+
+def verify_token(credentials = Depends(security)) -> str:
+    payload = decode_token(credentials)
+    return payload["sub"]
+
+
+def require_admin(credentials = Depends(security)) -> str:
+    payload = decode_token(credentials)
+    if payload.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+    return payload["sub"]

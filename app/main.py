@@ -2,10 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-from app.database import Base, engine
-from app.routers import auth, model
+from app.database import Base, engine, ensure_role_column
+from app.routers import auth, model, admin
 
 Base.metadata.create_all(bind=engine)
+ensure_role_column()
 
 app = FastAPI(
     title="NeuroAI 🧠",
@@ -23,6 +24,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(model.router)
+app.include_router(admin.router)
 
 static_path = Path(__file__).parent.parent / "static"
 if static_path.exists():

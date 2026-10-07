@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config import settings
 
@@ -17,3 +17,15 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def ensure_role_column():
+    """Add the users.role column if it doesn't exist yet (pre-RBAC databases)."""
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    columns = [c["name"] for c in inspector.get_columns("users")]
+    if "role" not in columns:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user'"))
+            conn.commit()
